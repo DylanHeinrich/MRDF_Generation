@@ -73,6 +73,35 @@ def create_header_row(orderId):
 def create_record_row():
     JobID = orderId[-6:]
     PieceID = f''.ljust(6, '0') #Grab this from the sequence number form the sorted list
+    TotalSheetsInputFdr1 = f'1'.ljust(2, '0')
+    TotalSheetsInputFdr2 = f''.ljust(2, '0')
+    SubsetSheetNumInptFdr1 = f''.ljust(2, '0')
+    SubsetSheetNumInptFdr2 = f''.ljust(2, '0')
+    AccountIdentifier = orderId[-6:].rjust(20)
+    InsertFeed01 = '0'
+    InsertFeed02 = '0'
+    InsertFeed03 = '0'
+    InsertFeed04 = '0'
+    InsertFeed05 = '0'
+    InsertFeed06 = '0'
+    InsertFeed07 = '0'
+    InsertFeed08 = '0'
+    InsertFeed09 = '0'
+    InsertFeed10 = '0'
+    InsertFeed11 = '0'
+    InsertFeed12 = '0'
+    SelectiveAccessory1 = '0'
+    SelectiveAccessory2 = '0'
+    SelectiveAccessory3 = '0'
+    SelectiveAccessory4 = '0'
+    SelectiveAccessory5 = '0'
+    SelectiveAccessory6 = '0'
+    AccountPull = '0'
+    QualityAudit = '0'
+    AlertAndClear = '0'
+    RecipientName = f''.rjust(40) #Pull this from the sorted file
+
+
     pass
 
 
