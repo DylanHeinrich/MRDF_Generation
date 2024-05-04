@@ -1,3 +1,13 @@
+'''
+TODO List:
+- Add a Field called 2D Bardcode to the final sorted list.
+    -Make sure that nothing else gets changed in the data list
+- Build out the UI 
+- Do couple different test
+- Check for bugs
+
+'''
+
 import csv
 import pandas as pd
 from datetime import datetime
@@ -6,15 +16,24 @@ import logging
 import signal
 import time
 import threading
+import ctypes
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 from tkinter import ttk, VERTICAL, HORIZONTAL, N, S, E, W, filedialog
 import ttkbootstrap as ttk
 import os
 
+PROGRAM_LOCATION = os.getcwd()
+
 logger = logging.getLogger(__name__)
 
 csv_path = None
+
+JobID = None
+PieceID = None
+PlannedMailPieceCount = None
+
+t1 = None
 
 class QueueHandler(logging.Handler):
     """Class to send logging records to a queue
@@ -51,7 +70,7 @@ class ConsoleUi:
         # Create a logging handler using a queue
         self.log_queue = queue.Queue()
         self.queue_handler = QueueHandler(self.log_queue)
-        formatter = logging.Formatter('%(asctime)s: %(message)s')
+        formatter = logging.Formatter('%(asctime)s: %(message)s', '%m/%d/%Y %H:%M:%S')
         self.queue_handler.setFormatter(formatter)
         logger.addHandler(self.queue_handler)
         # Start polling messages from the queue
@@ -81,26 +100,31 @@ class MainUi:
 
     def __init__(self, frame):
         self.frame = frame
-        self.landingLocationLabel = tk.Label(self.frame, text= 'csv_path', width= 50, height=1, fg='white', bg='gray')
-        self.landingLocationLabel.pack()
-        ttk.Button(self.frame, text='File Location', width=25, command= lambda: self.browseFolder(self.landingLocationLabel), bootstyle = 'outline').pack()
-        ttk.Button(self.frame, text='Generate', command=self.generate_File).pack()
+        self.landingLocationLabel = tk.Label(self.frame, text= 'Select sorted list: ', width= 50, height=1, fg='white', bg='gray')
+        ttk.Button(self.frame, text='Sorted File', width=25, command= lambda: self.browseFolder(self.landingLocationLabel), bootstyle = 'outline').pack(pady=5)
+        ttk.Button(self.frame, text='Generate', command=self.generate_File, bootstyle = 'outline').pack(pady= 5)
         
     def browseFolder(self, label):
         global csv_path
         self.csv_path = filedialog.askopenfilename(title='File Location', filetypes = [('CSV', '*.csv')])
-        logger.log(logging.DEBUG, msg = f'Path Selected = {self.csv_path}')
+        logger.log(logging.INFO, msg = f'Path Selected = {self.csv_path}')
         label.configure(text= self.csv_path)
         csv_path = self.csv_path
 
     def generate_File(self):
-        main_generator()
+        start_generation()
 
 
 class App:
 
     def __init__(self, root):
         self.root = root
+        if os.path.exists(f'{PROGRAM_LOCATION}/myapp.conf'):
+            with open(f'{PROGRAM_LOCATION}/myapp.conf', 'r') as file:
+                postion = file.read()
+            file.close()
+        self.root.geometry(postion)
+        root.resizable(False, False)
         root.title('MRDF Generator')
         root.columnconfigure(0, weight=1)
         root.rowconfigure(0, weight=1)
@@ -113,7 +137,7 @@ class App:
         console_frame.columnconfigure(0, weight=1)
         console_frame.rowconfigure(0, weight=1)
         vertical_pane.add(console_frame, weight=1)
-        main_frame = ttk.Labelframe(horizontal_pane, text="Main UI")
+        main_frame = ttk.Labelframe(horizontal_pane, text="Generator")
         main_frame.columnconfigure(0, weight=1)
         main_frame.rowconfigure(0,weight=1)
         horizontal_pane.add(main_frame, weight=1)
@@ -127,53 +151,129 @@ class App:
     def quit(self, *args):
         self.root.destroy()
 
+class mrdf_thread_with_exception(threading.Thread):
+    def __init__(self, name):
+        threading.Thread.__init__(self)
+        self.name = name
+             
+    def run(self):
+ 
+        # target function of the thread class
+        try:
+            while True:
+                main_generator()
+        finally:
+            pass
+          
+    def get_id(self):
+ 
+        # returns id of the respective thread
+        if hasattr(self, '_thread_id'):
+            return self._thread_id
+        for id, thread in threading._active.items():
+            if thread is self:
+                return id
+  
+    def raise_exception(self):
+        thread_id = self.get_id()
+        res = ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id,
+              ctypes.py_object(SystemExit))
+        if res > 1:
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
+            print('Exception raise failure')
 
 
 def main_generator():
-    global csv_path
+    global csv_path, JobID, PieceID, PlannedMailPieceCount
 
     path_location = os.path.dirname(csv_path)
 
-    orderId = str(os.path.basename(csv_path))
-    orderId = orderId.split('_',1)[0]
+
+    csv_file_name = str(os.path.basename(csv_path)).split('.', 1)[0]
+    orderId = csv_file_name.split('_',1)[0]
 
     MRDF = open(f'{path_location}/{orderId}.txt','a')
-    csvFile = pd.read_csv(csv_path, header=0, usecols= ["first", "last", "first2", "address", "address2", "city", "st"])
+
+    csv_input = pd.read_csv(csv_path)
+
+    if 'first' in csv_input.columns:
+        try:
+            csvFile = pd.read_csv(csv_path, header=0, usecols= ["first", "last", "company","first2", "address", "address2", "city", "st"])
+        except:
+            logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
+            t1.raise_exception()
+            t1.join()
+    elif 'company' in csv_input.columns:
+        try:
+            csvFile = pd.read_csv(csv_path, header=0, usecols= ["company", "address", "address2", "city", "st"])
+        except:
+            logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
+            t1.raise_exception()
+            t1.join()
+    
+
     total_number_records = len(csvFile.index)
     
     headerrow = create_header_row(orderId, total_number_records)
     MRDF.write(headerrow + '\n')
+
+    barcode_row = []
+    barcodeHR_row = []
 
     record_number = 1
 
     #print(csvFile.head())
 
     for index, row in csvFile.iterrows():
-        last = row['last']
-        if 'nan' in str(row['address2']):
-            row['address2'] = ''
-        if row['last'] != None:
-            row['first'] = f'{row['first']} {row['last']}'
+        if 'first' in row:
+            if row['last'] != None:
+                row['first'] = f'{row['first']} {row['last']}'
+            if 'address2' in row:
+                if 'nan' in str(row['address2']):
+                    row['address2'] = ''
+            if row['first'] == None and row['company'] != None:
+                row['company'] = str(row['company'])[0:40]
+                recordRow = row["company"], row['address'], row['address2'], row['city'], row['st']
+            else:
+                row['first'] = str(row['first'])[0:40]
+                recordRow = row["first"], row['address'], row['address2'], row['city'], row['st']
+        elif 'company' in row:
+            row['company'] = str(row['company'])[0:40]
+            recordRow = row["company"], row['address'], row['address2'], row['city'], row['st']
 
-        row['first'] = str(row['first'])[0:40]
-        recordRow = row["first"], row['address'], row['address2'], row['city'], row['st']
+
         finish_record = create_record_row(recordRow, orderId,record_number)
+
         MRDF.write(finish_record + '\n')
+        
+        barcode = f'{JobID}{PieceID}0101'
+        barcodeHR = f'JobID {JobID}, PieceID {PieceID}, Page {record_number} of {total_number_records}'
+        barcode = f'{barcode}'.ljust(27, '0')
+        barcode_row.append(barcode)
+        barcodeHR_row.append(barcodeHR)
+
+
         record_number += 1
 
+    csv_input['2DBarcode'] = barcode_row
+    csv_input['2DBarcodeHR'] = barcodeHR_row
+    csv_input.to_csv(f'{path_location}/{csv_file_name}_2DBarcode.csv', index=False)
 
     MRDF.close()
-    logger.log(logging.INFO, msg="MRDF has been generated")
+    logger.log(logging.INFO, msg= f'MRDF and the new csv have been generated\nLocation: {path_location}')
+    t1.raise_exception()
+    t1.join()
 
-def main():
-    logging.basicConfig(level=logging.DEBUG)
-    root = tk.Tk()
-    app = App(root)
-    app.root.mainloop()
-
-
+def start_generation():
+    global t1
+    msg = 'Generating MRDF and CSV files'
+    logger.log(logging.INFO, msg=msg)
+    t1 = mrdf_thread_with_exception('MRDF Generator')
+    t1.start()
 
 def create_header_row(orderId, record_total):
+    global PlannedMailPieceCount
+
     JobID = orderId[-6:]
     RunID = JobID.ljust(15)
     CreationDate = datetime.now().strftime('%m/%d/%Y %H:%M:%S')
@@ -236,9 +336,13 @@ def create_header_row(orderId, record_total):
                 InserFeeder09DocID+InserFeeder10DocID+InserFeeder11DocID+InserFeeder12DocID+
                 PrintJobName+BREPrintJobName+UserDefinedField1+UserDefinedField2+Filler+
                 EndOfRecordIndicator+'\n')
+    
+
     return headerrow
 
 def create_record_row(input_row, orderId, piece_number):
+    global JobID, PieceID
+
     JobID = orderId[-6:]
     PieceID = f'{piece_number}'.rjust(6, '0')
     TotalSheetsInputFdr1 = f'1'.rjust(2, '0')
@@ -305,8 +409,15 @@ def create_record_row(input_row, orderId, piece_number):
               MarketingTextMessage + IntelligentMailBarcode + ReprintIndex + PrviousMailRunUniquelID + PreviousMRDF + PreviousPieceID + UserDefinedField1 + UserDefinedField2 +
               UserDefinedField3 + UserDefinedField4 + UserDefinedField5 + EndOfRecordIndicator)
     
+
     return record
 
+
+def main():
+    logging.basicConfig(level=logging.DEBUG)
+    root = tk.Tk()
+    app = App(root)
+    app.root.mainloop()
 
 if __name__ == '__main__':
 
