@@ -274,8 +274,8 @@ def start_generation():
 def create_header_row(orderId, record_total):
     global PlannedMailPieceCount
 
-    JobID = orderId[-6:]
-    RunID = JobID.ljust(15)
+    JobID = str(orderId[-6:]).ljust(6)
+    RunID = str(JobID).ljust(15)
     CreationDate = datetime.now().strftime('%m/%d/%Y %H:%M:%S')
     GroupID = ''.ljust(15)
     JobType = 'CHECK1'.ljust(15)
@@ -343,7 +343,7 @@ def create_header_row(orderId, record_total):
 def create_record_row(input_row, orderId, piece_number):
     global JobID, PieceID
 
-    JobID = orderId[-6:]
+    JobID = str(orderId[-6:]).ljust(6)
     PieceID = f'{piece_number}'.rjust(6, '0')
     TotalSheetsInputFdr1 = f'1'.rjust(2, '0')
     TotalSheetsInputFdr2 = f''.ljust(2, '0')
