@@ -227,7 +227,11 @@ def main_generator():
     for index, row in csvFile.iterrows():
         if 'first' in row:
             if row['last'] != None:
-                row['first'] = f'{row['first']} {row['last']}'
+                last = str(row['last']).lower()
+                if last == 'nan':
+                    row['first'] = f'{row['first']}'
+                else:
+                    row['first'] = f'{row['first']} {row['last']}'
             if 'address2' in row:
                 if 'nan' in str(row['address2']):
                     row['address2'] = ''
