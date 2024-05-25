@@ -22,6 +22,7 @@ from tkinter.scrolledtext import ScrolledText
 from tkinter import ttk, VERTICAL, HORIZONTAL, N, S, E, W, filedialog
 import ttkbootstrap as ttk
 import os
+import numpy as np
 
 PROGRAM_LOCATION = os.getcwd()
 
@@ -183,6 +184,17 @@ class mrdf_thread_with_exception(threading.Thread):
             print('Exception raise failure')
 
 
+def remove_non_utf8(input_file, output_file): 
+    with open(input_file, 'r',  encoding='unicode_escape') as input_csv, open(output_file, 'w', encoding='utf-8', newline= '') as output_csv: 
+        reader = csv.reader(input_csv) 
+        writer = csv.writer(output_csv) 
+        rows = []
+        for row in reader: 
+            cleaned_row = [cell.encode('utf-8', 'ignore').decode('unicode_escape') for cell in row] 
+            rows.append(cleaned_row) 
+        writer.writerows(rows)
+
+
 def main_generator():
     global csv_path, JobID, PieceID, PlannedMailPieceCount
 
@@ -194,22 +206,42 @@ def main_generator():
 
     MRDF = open(f'{path_location}/{orderId}.txt','a')
 
-    csv_input = pd.read_csv(csv_path)
+    output = f'{path_location}/{csv_file_name}_Clean.csv'
+    remove_non_utf8(csv_path,output)
 
-    if 'first' in csv_input.columns:
-        try:
-            csvFile = pd.read_csv(csv_path, header=0, usecols= ["first", "last", "company","first2", "address", "address2", "city", "st"])
-        except:
-            logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
-            t1.raise_exception()
-            t1.join()
-    elif 'company' in csv_input.columns:
-        try:
-            csvFile = pd.read_csv(csv_path, header=0, usecols= ["company", "address", "address2", "city", "st"])
-        except:
-            logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
-            t1.raise_exception()
-            t1.join()
+    csv_input = pd.read_csv(csv_path, engine='python', encoding_errors= 'replace')
+
+    if 'numb_piece' not in csv_input.columns:
+        if 'first' in csv_input.columns and 'order_numb' in csv_input.columns:
+            try:
+                csvFile = pd.read_csv(csv_path, header=0, usecols= ["first", "last", "company","first2", "address", "address2", "city", "st","order_numb"])
+            except Exception as e:
+                logger.log(logging.ERROR, msg = f'{e}')
+                logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
+                t1.raise_exception()
+                t1.join()
+        elif 'company' in csv_input.columns and 'order_numb' in csv_input.columns:
+            try:
+                csvFile = pd.read_csv(csv_path, header=0, usecols= ["company", "address", "address2", "city", "st","order_numb"])
+            except:
+                logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
+                t1.raise_exception()
+                t1.join()
+    else:
+        if 'first' in csv_input.columns and 'order_numb' in csv_input.columns:
+            try:
+                csvFile = pd.read_csv(csv_path, header=0, usecols= ["first", "last", "company","first2", "address", "address2", "city", "st","order_numb", "numb_piece"])
+            except:
+                logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
+                t1.raise_exception()
+                t1.join()
+        elif 'company' in csv_input.columns and 'order_numb' in csv_input.columns:
+            try:
+                csvFile = pd.read_csv(csv_path, header=0, usecols= ["company", "address", "address2", "city", "st","order_numb", "numb_piece"])
+            except:
+                logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
+                t1.raise_exception()
+                t1.join()
     
 
     total_number_records = len(csvFile.index)
@@ -217,6 +249,19 @@ def main_generator():
     headerrow = create_header_row(orderId, total_number_records)
     MRDF.write(headerrow + '\n')
 
+    if 'numb_piece' not in csv_input.columns:
+        single_generation(csvFile, orderId, MRDF, csv_input, path_location, csv_file_name, total_number_records)
+    else:
+        variable_generation(csvFile, orderId, MRDF, csv_input, path_location, csv_file_name, total_number_records)
+
+
+    MRDF.close()
+    logger.log(logging.INFO, msg= f'MRDF and the new csv have been generated\nLocation: {path_location}')
+    t1.raise_exception()
+    t1.join()
+
+def single_generation(csv_pd, order, mrdf, csv_input, file_location, file_name, total):
+    csvFile = csv_pd
     barcode_row = []
     barcodeHR_row = []
 
@@ -225,33 +270,34 @@ def main_generator():
     #print(csvFile.head())
 
     for index, row in csvFile.iterrows():
-        if 'first' in row:
-            if row['last'] != None:
-                last = str(row['last']).lower()
-                if last == 'nan':
-                    row['first'] = f'{row['first']}'
+        if 'order_numb' in row:
+            if 'first' in row:
+                if row['last'] != None:
+                    last = str(row['last']).lower()
+                    if last == 'nan':
+                        row['first'] = f'{row['first']}'
+                    else:
+                        row['first'] = f'{row['first']} {row['last']}'
+                if 'address2' in row:
+                    if 'nan' in str(row['address2']):
+                        row['address2'] = ''
+                if row['first'] == None and row['company'] != None:
+                    row['company'] = str(row['company'])[0:40]
+                    recordRow = row["company"], row['address'], row['address2'], row['city'], row['st'], row['order_numb']
                 else:
-                    row['first'] = f'{row['first']} {row['last']}'
-            if 'address2' in row:
-                if 'nan' in str(row['address2']):
-                    row['address2'] = ''
-            if row['first'] == None and row['company'] != None:
+                    row['first'] = str(row['first'])[0:40]
+                    recordRow = row["first"], row['address'], row['address2'], row['city'], row['st'], row['order_numb']
+            elif 'company' in row:
                 row['company'] = str(row['company'])[0:40]
-                recordRow = row["company"], row['address'], row['address2'], row['city'], row['st']
-            else:
-                row['first'] = str(row['first'])[0:40]
-                recordRow = row["first"], row['address'], row['address2'], row['city'], row['st']
-        elif 'company' in row:
-            row['company'] = str(row['company'])[0:40]
-            recordRow = row["company"], row['address'], row['address2'], row['city'], row['st']
+                recordRow = row["company"], row['address'], row['address2'], row['city'], row['st'], row['order_numb']
 
+        numb_pieces = 1
+        finish_record = create_record_row(recordRow, order, record_number, numb_pieces)
 
-        finish_record = create_record_row(recordRow, orderId,record_number)
-
-        MRDF.write(finish_record + '\n')
+        mrdf.write(finish_record + '\n')
         
         barcode = f'{JobID}{PieceID}0101'
-        barcodeHR = f'JobID {JobID}, PieceID {PieceID}, Page {record_number} of {total_number_records}'
+        barcodeHR = f'JobID {JobID}{row['order_numb']}, PieceID {PieceID}, Page {record_number} of {total}'
         barcode = f'{barcode}'.ljust(27, '0')
         barcode_row.append(barcode)
         barcodeHR_row.append(barcodeHR)
@@ -261,12 +307,64 @@ def main_generator():
 
     csv_input['2DBarcode'] = barcode_row
     csv_input['2DBarcodeHR'] = barcodeHR_row
-    csv_input.to_csv(f'{path_location}/{csv_file_name}_2DBarcode.csv', index=False)
+    csv_input.to_csv(f'{file_location}/{file_name}_2DBarcode.csv', index=False)
 
-    MRDF.close()
-    logger.log(logging.INFO, msg= f'MRDF and the new csv have been generated\nLocation: {path_location}')
-    t1.raise_exception()
-    t1.join()
+def variable_generation(csv_pd, order, mrdf, csv_input, file_location, file_name, total):
+    csvFile = csv_pd
+    barcode_row = []
+    barcodeHR_row = []
+
+    record_number = 1
+
+    #print(csvFile.head())
+
+    for index, row in csvFile.iterrows():
+        if 'order_numb' in row:
+            if 'first' in row:
+                if row['last'] != None:
+                    last = str(row['last']).lower()
+                    if last == 'nan':
+                        row['first'] = f'{row['first']}'
+                    else:
+                        row['first'] = f'{row['first']} {row['last']}'
+                if 'address2' in row:
+                    if 'nan' in str(row['address2']):
+                        row['address2'] = ''
+                if row['first'] == None and row['company'] != None:
+                    row['company'] = str(row['company'])[0:40]
+                    recordRow = row["company"], row['address'], row['address2'], row['city'], row['st'], row['order_numb'], row['numb_piece']
+                else:
+                    row['first'] = str(row['first'])[0:40]
+                    recordRow = row["first"], row['address'], row['address2'], row['city'], row['st'], row['order_numb'], row['numb_piece']
+            elif 'company' in row:
+                row['company'] = str(row['company'])[0:40]
+                recordRow = row["company"], row['address'], row['address2'], row['city'], row['st'], row['order_numb'], row['numb_piece']
+
+
+        finish_record = create_record_row(recordRow, order, record_number, row['numb_piece'])
+
+        mrdf.write(finish_record + '\n')
+        
+        barcode = f'{JobID}{PieceID}0101'
+        barcodeHR = f'JobID {JobID}{row['order_numb']}, PieceID {PieceID}, Page {record_number} of {total}'
+        barcode = f'{barcode}'.ljust(27, '0')
+        barcode_row.append(barcode)
+        barcodeHR_row.append(barcodeHR)
+
+
+        record_number += 1
+
+    csv_input['2DBarcode'] = barcode_row
+    csv_input['2DBarcodeHR'] = barcodeHR_row
+
+    csv_input_new = pd.DataFrame(columns = csv_input.columns)
+    for row in csv_input.values:
+        number_peices = row[0]
+        new_df = pd.DataFrame([row] * number_peices, columns = csv_input.columns)
+        csv_input_new = pd.concat([csv_input_new, new_df], join = 'inner')
+
+
+    csv_input_new.to_csv(f'{file_location}/{file_name}_2DBarcode.csv', index=False)
 
 def start_generation():
     global t1
@@ -344,16 +442,16 @@ def create_header_row(orderId, record_total):
 
     return headerrow
 
-def create_record_row(input_row, orderId, piece_number):
+def create_record_row(input_row, orderId, piece_number, number_of_pieces):
     global JobID, PieceID
 
     JobID = str(orderId[-6:]).ljust(6)
     PieceID = f'{piece_number}'.rjust(6, '0')
-    TotalSheetsInputFdr1 = f'1'.rjust(2, '0')
+    TotalSheetsInputFdr1 = f'{number_of_pieces}'.rjust(2, '0')
     TotalSheetsInputFdr2 = f''.ljust(2, '0')
     SubsetSheetNumInptFdr1 = f''.ljust(2, '0')
     SubsetSheetNumInptFdr2 = f''.ljust(2, '0')
-    AccountIdentifier = orderId[-6:].ljust(20)
+    AccountIdentifier = f'{orderId[-6:]}{input_row[5]}'.ljust(20)
     InsertFeed01 = '0'
     InsertFeed02 = '0'
     InsertFeed03 = '0'
@@ -398,7 +496,7 @@ def create_record_row(input_row, orderId, piece_number):
     PrviousMailRunUniquelID = ''.ljust(30)
     PreviousMRDF = ''.ljust(15)
     PreviousPieceID = ''.ljust(6, '0')
-    UserDefinedField1 = ''.ljust(30)
+    UserDefinedField1 = f'{input_row[5]}'.ljust(30)
     UserDefinedField2 = ''.ljust(30)
     UserDefinedField3 = ''.ljust(30)
     UserDefinedField4 = ''.ljust(30)
