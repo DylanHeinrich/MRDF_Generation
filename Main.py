@@ -23,6 +23,8 @@ from tkinter import ttk, VERTICAL, HORIZONTAL, N, S, E, W, filedialog
 import ttkbootstrap as ttk
 import os
 import numpy as np
+import codecs
+
 
 PROGRAM_LOCATION = os.getcwd()
 
@@ -209,12 +211,12 @@ def main_generator():
     output = f'{path_location}/{csv_file_name}_Clean.csv'
     remove_non_utf8(csv_path,output)
 
-    csv_input = pd.read_csv(csv_path, engine='python', encoding_errors= 'replace')
+    csv_input = pd.read_csv(output, encoding='utf-8', encoding_errors='ignore')
 
     if 'numb_piece' not in csv_input.columns:
         if 'first' in csv_input.columns and 'order_numb' in csv_input.columns:
             try:
-                csvFile = pd.read_csv(csv_path, header=0, usecols= ["first", "last", "company","first2", "address", "address2", "city", "st","order_numb"])
+                csvFile = pd.read_csv(output, header=0, usecols= ["first", "last", "company","first2", "address", "address2", "city", "st","order_numb"], encoding='utf-8', encoding_errors='ignore')
             except Exception as e:
                 logger.log(logging.ERROR, msg = f'{e}')
                 logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
@@ -283,12 +285,18 @@ def single_generation(csv_pd, order, mrdf, csv_input, file_location, file_name, 
                         row['address2'] = ''
                 if row['first'] == None and row['company'] != None:
                     row['company'] = str(row['company'])[0:40]
+                    row['address'] = str(row['address'])[0:40]
+                    row['address2'] = str(row['address2'])[0:40]
                     recordRow = row["company"], row['address'], row['address2'], row['city'], row['st'], row['order_numb']
                 else:
                     row['first'] = str(row['first'])[0:40]
+                    row['address'] = str(row['address'])[0:40]
+                    row['address2'] = str(row['address2'])[0:40]
                     recordRow = row["first"], row['address'], row['address2'], row['city'], row['st'], row['order_numb']
             elif 'company' in row:
                 row['company'] = str(row['company'])[0:40]
+                row['address'] = str(row['address'])[0:40]
+                row['address2'] = str(row['address2'])[0:40]
                 recordRow = row["company"], row['address'], row['address2'], row['city'], row['st'], row['order_numb']
 
         numb_pieces = 1
@@ -297,7 +305,7 @@ def single_generation(csv_pd, order, mrdf, csv_input, file_location, file_name, 
         mrdf.write(finish_record + '\n')
         
         barcode = f'{JobID}{PieceID}0101'
-        barcodeHR = f'JobID {JobID}{row['order_numb']}, PieceID {PieceID}, Page {record_number} of {total}'
+        barcodeHR = f'JobID {JobID}, PieceID {PieceID}, Page {record_number} of {total}'
         barcode = f'{barcode}'.ljust(27, '0')
         barcode_row.append(barcode)
         barcodeHR_row.append(barcodeHR)
@@ -317,7 +325,7 @@ def variable_generation(csv_pd, order, mrdf, csv_input, file_location, file_name
     record_number = 1
 
     #print(csvFile.head())
-
+    
     for index, row in csvFile.iterrows():
         if 'order_numb' in row:
             if 'first' in row:
@@ -346,7 +354,7 @@ def variable_generation(csv_pd, order, mrdf, csv_input, file_location, file_name
         mrdf.write(finish_record + '\n')
         
         barcode = f'{JobID}{PieceID}0101'
-        barcodeHR = f'JobID {JobID}{row['order_numb']}, PieceID {PieceID}, Page {record_number} of {total}'
+        barcodeHR = f'JobID {JobID}, PieceID {PieceID}, Page {record_number} of {total}'
         barcode = f'{barcode}'.ljust(27, '0')
         barcode_row.append(barcode)
         barcodeHR_row.append(barcodeHR)
@@ -376,22 +384,25 @@ def start_generation():
 def create_header_row(orderId, record_total):
     global PlannedMailPieceCount
 
-    JobID = str(orderId[-6:]).ljust(6)
-    RunID = str(JobID).ljust(15)
-    CreationDate = datetime.now().strftime('%m/%d/%Y %H:%M:%S')
+    creatationDate = datetime.now().strftime('%m/%d/%Y %H:%M:%S')
+    cycleID = datetime.now().strftime('%m_%d')
+
+    JobID = str(orderId[-6:]).ljust(6, ' ')
+    RunID = str(JobID).ljust(15, ' ')
+    CreationDate = f'{creatationDate}'.ljust(19, ' ')
     GroupID = ''.ljust(15)
-    JobType = 'CHECK1'.ljust(15)
-    ApplicationID = 'ShippingMgr'.ljust(15)
-    CycleID = datetime.now().strftime('%m_%d')
-    ClientID = ''.ljust(15)
-    SLADueDate = ''.ljust(19)
+    JobType = 'CHECK1'.ljust(15, ' ')
+    ApplicationID = 'ShippingMgr'.ljust(15, ' ')
+    CycleID = f'{cycleID}'.ljust(5, ' ')
+    ClientID = ''.ljust(15, ' ')
+    SLADueDate = ''.ljust(19, ' ')
     SLAWarningOffset = ''.ljust(5,'0')
-    ReprintDueDate = ''.ljust(19)
+    ReprintDueDate = ''.ljust(19, ' ')
     ReprintWarningOffset = ''.ljust(5,'0')
-    DataSetType = '2'
+    DataSetType = '2'.rjust(1, '0')
     PlannedMailPieceCount = f'{record_total}'.rjust(6,'0')
     PlannedSheetCount = f'{record_total}'.rjust(10,'0')
-    InserterMode = ''.ljust(8)
+    InserterMode = ''.ljust(8, ' ')
     InserFeeder01Mode = '1'
     InserFeeder02Mode = '1'
     InserFeeder03Mode = '1'
@@ -404,24 +415,24 @@ def create_header_row(orderId, record_total):
     InserFeeder10Mode = '1'
     InserFeeder11Mode = '1'
     InserFeeder12Mode = '1'
-    EnvelopeFeederDocID = ''.ljust(15)
-    InserFeeder01DocID = ''.ljust(15)
-    InserFeeder02DocID = ''.ljust(15)
-    InserFeeder03DocID = ''.ljust(15)
-    InserFeeder04DocID = ''.ljust(15)
-    InserFeeder05DocID = ''.ljust(15)
-    InserFeeder06DocID = ''.ljust(15)
-    InserFeeder07DocID = ''.ljust(15)
-    InserFeeder08DocID = ''.ljust(15)
-    InserFeeder09DocID = ''.ljust(15)
-    InserFeeder10DocID = ''.ljust(15)
-    InserFeeder11DocID = ''.ljust(15)
-    InserFeeder12DocID = ''.ljust(15)
-    PrintJobName = ''.ljust(15)
-    BREPrintJobName = ''.ljust(15)
-    UserDefinedField1 = ''.ljust(30)
-    UserDefinedField2 = ''.ljust(30)
-    Filler = ''.ljust(438)
+    EnvelopeFeederDocID = ''.ljust(15, ' ')
+    InserFeeder01DocID = ''.ljust(15, ' ')
+    InserFeeder02DocID = ''.ljust(15, ' ')
+    InserFeeder03DocID = ''.ljust(15, ' ')
+    InserFeeder04DocID = ''.ljust(15, ' ')
+    InserFeeder05DocID = ''.ljust(15, ' ')
+    InserFeeder06DocID = ''.ljust(15, ' ')
+    InserFeeder07DocID = ''.ljust(15, ' ')
+    InserFeeder08DocID = ''.ljust(15, ' ')
+    InserFeeder09DocID = ''.ljust(15, ' ')
+    InserFeeder10DocID = ''.ljust(15, ' ')
+    InserFeeder11DocID = ''.ljust(15, ' ')
+    InserFeeder12DocID = ''.ljust(15, ' ')
+    PrintJobName = ''.ljust(15, ' ')
+    BREPrintJobName = ''.ljust(15, ' ')
+    UserDefinedField1 = ''.ljust(30, ' ')
+    UserDefinedField2 = ''.ljust(30, ' ')
+    Filler = ''.ljust(438, ' ')
     EndOfRecordIndicator = 'X'
 
 
@@ -437,7 +448,7 @@ def create_header_row(orderId, record_total):
                 InserFeeder05DocID+InserFeeder06DocID+InserFeeder07DocID+InserFeeder08DocID+
                 InserFeeder09DocID+InserFeeder10DocID+InserFeeder11DocID+InserFeeder12DocID+
                 PrintJobName+BREPrintJobName+UserDefinedField1+UserDefinedField2+Filler+
-                EndOfRecordIndicator+'\n')
+                EndOfRecordIndicator)
     
 
     return headerrow
@@ -445,13 +456,13 @@ def create_header_row(orderId, record_total):
 def create_record_row(input_row, orderId, piece_number, number_of_pieces):
     global JobID, PieceID
 
-    JobID = str(orderId[-6:]).ljust(6)
+    JobID = str(orderId[-6:]).ljust(6, ' ')
     PieceID = f'{piece_number}'.rjust(6, '0')
     TotalSheetsInputFdr1 = f'{number_of_pieces}'.rjust(2, '0')
-    TotalSheetsInputFdr2 = f''.ljust(2, '0')
-    SubsetSheetNumInptFdr1 = f''.ljust(2, '0')
-    SubsetSheetNumInptFdr2 = f''.ljust(2, '0')
-    AccountIdentifier = f'{orderId[-6:]}{input_row[5]}'.ljust(20)
+    TotalSheetsInputFdr2 = f''.rjust(2, '0')
+    SubsetSheetNumInptFdr1 = f''.rjust(2, '0')
+    SubsetSheetNumInptFdr2 = f''.rjust(2, '0')
+    AccountIdentifier = f'{orderId[-6:]}{input_row[5]}'.ljust(20, ' ')
     InsertFeed01 = '0'
     InsertFeed02 = '0'
     InsertFeed03 = '0'
@@ -473,34 +484,34 @@ def create_record_row(input_row, orderId, piece_number, number_of_pieces):
     AccountPull = '0'
     QualityAudit = '0'
     AlertAndClear = '0'
-    RecipientName = f'{input_row[0]}'.ljust(40) #Pull this from the sorted file
-    RecipientAddress1 = f'{input_row[1]}'.ljust(40) #Pull from the sorted file
-    RecipientAddress2 = f'{input_row[2]}'.ljust(40) #Pull frrom the sorted file
-    RecipientAddress3 = f''.ljust(40) #Pull frrom the sorted file
-    RecipientAddress4 = f''.ljust(40) #Pull frrom the sorted file
-    RecipientAddress5 = f''.ljust(40) #Pull frrom the sorted file
-    Zip5 = f''.ljust(5, '0')
-    Zip4 = f''.ljust(4, '0')
-    Zip2 = f''.ljust(2, '0')
-    ZipCheckDigit = ''.ljust(1)
-    BusinessReturnAddress1 = f''.ljust(40)
-    BusinessReturnAddress2 = f''.ljust(40)
-    BusinessReturnAddress3 = f''.ljust(40)
-    BusinessReturnAddress4 = f''.ljust(40)
-    BusinessReturnAddress5 = f''.ljust(40)
-    LogoBitmapSelect1 = ''.ljust(8)
-    LogoBitmapSelect2 = ''.ljust(8)
-    MarketingTextMessage = ''.ljust(40)
-    IntelligentMailBarcode = ''.ljust(31)
-    ReprintIndex = ''.ljust(20)
-    PrviousMailRunUniquelID = ''.ljust(30)
-    PreviousMRDF = ''.ljust(15)
-    PreviousPieceID = ''.ljust(6, '0')
-    UserDefinedField1 = f'{input_row[5]}'.ljust(30)
-    UserDefinedField2 = ''.ljust(30)
-    UserDefinedField3 = ''.ljust(30)
-    UserDefinedField4 = ''.ljust(30)
-    UserDefinedField5 = ''.ljust(30)
+    RecipientName = f'{input_row[0]}'.ljust(40, ' ') #Pull this from the sorted file
+    RecipientAddress1 = f'{input_row[1]}'.ljust(40, ' ') #Pull from the sorted file
+    RecipientAddress2 = f'{input_row[2]}'.ljust(40, ' ') #Pull frrom the sorted file
+    RecipientAddress3 = f''.ljust(40, ' ') #Pull frrom the sorted file
+    RecipientAddress4 = f''.ljust(40, ' ') #Pull frrom the sorted file
+    RecipientAddress5 = f''.ljust(40, ' ') #Pull frrom the sorted file
+    Zip5 = f''.rjust(5, '0')
+    Zip4 = f''.rjust(4, '0')
+    Zip2 = f''.rjust(2, '0')
+    ZipCheckDigit = ''.ljust(1, ' ')
+    BusinessReturnAddress1 = f''.ljust(40, ' ')
+    BusinessReturnAddress2 = f''.ljust(40, ' ')
+    BusinessReturnAddress3 = f''.ljust(40, ' ')
+    BusinessReturnAddress4 = f''.ljust(40, ' ')
+    BusinessReturnAddress5 = f''.ljust(40, ' ')
+    LogoBitmapSelect1 = ''.ljust(8, ' ')
+    LogoBitmapSelect2 = ''.ljust(8, ' ')
+    MarketingTextMessage = ''.ljust(40, ' ')
+    IntelligentMailBarcode = ''.ljust(31, ' ')
+    ReprintIndex = ''.ljust(20, ' ')
+    PrviousMailRunUniquelID = ''.ljust(30, ' ')
+    PreviousMRDF = ''.ljust(15, ' ')
+    PreviousPieceID = ''.rjust(6, '0')
+    UserDefinedField1 = f'{input_row[5]}'.ljust(30, ' ')
+    UserDefinedField2 = ''.ljust(30, ' ')
+    UserDefinedField3 = ''.ljust(30, ' ')
+    UserDefinedField4 = ''.ljust(30, ' ')
+    UserDefinedField5 = ''.ljust(30, ' ')
     EndOfRecordIndicator = 'X'
 
     record = (JobID + PieceID + TotalSheetsInputFdr1 + TotalSheetsInputFdr2 + SubsetSheetNumInptFdr1 + SubsetSheetNumInptFdr2 + AccountIdentifier + InsertFeed01 +
