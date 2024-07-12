@@ -206,15 +206,15 @@ def main_generator():
     csv_file_name = str(os.path.basename(csv_path)).split('.', 1)[0]
     orderId = csv_file_name.split('_',1)[0]
 
-    MRDF = open(f'{path_location}/{orderId}.txt','a')
+    MRDF = open(f'{path_location}/{orderId}.txt','a', errors = 'replace')
 
-    output = f'{path_location}/{csv_file_name}_Clean.csv'
-    remove_non_utf8(csv_path,output)
+    output = f'{path_location}/{csv_file_name}.csv'
 
-    csv_input = pd.read_csv(output, encoding='utf-8', encoding_errors='ignore')
+    with open(output, encoding= 'utf-8', errors = 'replace') as f:
+        csv_input = pd.read_csv(f, dtype ='str')
 
-    if 'numb_piece' not in csv_input.columns:
-        if 'first' in csv_input.columns and 'order_numb' in csv_input.columns:
+    if 'numb_piece' not in csv_input.columns and 'order_numb' in csv_input.columns:
+        if 'first' in csv_input.columns:
             try:
                 csvFile = pd.read_csv(output, header=0, usecols= ["first", "last", "company","first2", "address", "address2", "city", "st","order_numb"], encoding='utf-8', encoding_errors='ignore')
             except Exception as e:
@@ -222,26 +222,41 @@ def main_generator():
                 logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
                 t1.raise_exception()
                 t1.join()
-        elif 'company' in csv_input.columns and 'order_numb' in csv_input.columns:
+        elif 'company' in csv_input.columns:
             try:
                 csvFile = pd.read_csv(csv_path, header=0, usecols= ["company", "address", "address2", "city", "st","order_numb"])
             except:
                 logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
                 t1.raise_exception()
                 t1.join()
-    else:
-        if 'first' in csv_input.columns and 'order_numb' in csv_input.columns:
+    elif 'order_numb' in csv_input.columns:
+        if 'first' in csv_input.columns:
             try:
                 csvFile = pd.read_csv(csv_path, header=0, usecols= ["first", "last", "company","first2", "address", "address2", "city", "st","order_numb", "numb_piece"])
             except:
                 logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
                 t1.raise_exception()
                 t1.join()
-        elif 'company' in csv_input.columns and 'order_numb' in csv_input.columns:
+        elif 'company' in csv_input.columns:
             try:
                 csvFile = pd.read_csv(csv_path, header=0, usecols= ["company", "address", "address2", "city", "st","order_numb", "numb_piece"])
             except:
+                logger.log(logging.ERROR, msg='Could not find first or company field name. Did you choose the right file.')
+                t1.raise_exception()
+                t1.join()
+    else:
+        if 'first' in csv_input.columns:
+            try:
+                csvFile = pd.read_csv(csv_path, header=0, usecols= ["first", "last", "address", "address2", "city", "st"])
+            except:
                 logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
+                t1.raise_exception()
+                t1.join()
+        elif 'company' in csv_input.columns:
+            try:
+                csvFile = pd.read_csv(csv_path, header=0, usecols= ["company", "address", "address2", "city", "st","order_numb"])
+            except:
+                logger.log(logging.ERROR, msg='Could not find first or company field name. Did you choose the right file.')
                 t1.raise_exception()
                 t1.join()
     
@@ -315,7 +330,7 @@ def single_generation(csv_pd, order, mrdf, csv_input, file_location, file_name, 
 
     csv_input['2DBarcode'] = barcode_row
     csv_input['2DBarcodeHR'] = barcodeHR_row
-    csv_input.to_csv(f'{file_location}/{file_name}_2DBarcode.csv', index=False)
+    csv_input.to_csv(f'{file_location}/{file_name}_2DBarcode.csv', index=False, quoting = csv.QUOTE_ALL)
 
 def variable_generation(csv_pd, order, mrdf, csv_input, file_location, file_name, total):
     csvFile = csv_pd
@@ -533,8 +548,4 @@ def main():
     app.root.mainloop()
 
 if __name__ == '__main__':
-
     main()
-
-    fileName = '2377844_SORTED.csv'
-    #orderId = input('Please enter in the Detail Number or Job number\n')
