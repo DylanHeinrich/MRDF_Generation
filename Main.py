@@ -291,10 +291,12 @@ def single_generation(csv_pd, order, mrdf, csv_input, file_location, file_name, 
             if 'first' in row:
                 if row['last'] != None:
                     last = str(row['last']).lower()
+                    first = row['first']
+                    last = row['last']
                     if last == 'nan':
-                        row['first'] = f'{row['first']}'
+                        row['first'] = f'{first}'
                     else:
-                        row['first'] = f'{row['first']} {row['last']}'
+                        row['first'] = f'{first} {last}'
                 if 'address2' in row:
                     if 'nan' in str(row['address2']):
                         row['address2'] = ''
@@ -346,10 +348,12 @@ def variable_generation(csv_pd, order, mrdf, csv_input, file_location, file_name
             if 'first' in row:
                 if row['last'] != None:
                     last = str(row['last']).lower()
+                    first = row['first']
+                    last = row['last']
                     if last == 'nan':
-                        row['first'] = f'{row['first']}'
+                        row['first'] = f'{first}'
                     else:
-                        row['first'] = f'{row['first']} {row['last']}'
+                        row['first'] = f'{first} {last}'
                 if 'address2' in row:
                     if 'nan' in str(row['address2']):
                         row['address2'] = ''
