@@ -289,10 +289,10 @@ def single_generation(csv_pd, order, mrdf, csv_input, file_location, file_name, 
     for index, row in csvFile.iterrows():
         if 'order_numb' in row:
             if 'first' in row:
+                last = row['last']
                 if row['last'] != None:
                     last = str(row['last']).lower()
                     first = row['first']
-                    last = row['last']
                     if last == 'nan':
                         row['first'] = f'{first}'
                     else:
