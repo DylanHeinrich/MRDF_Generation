@@ -1,10 +1,10 @@
 '''
 TODO List:
-- Add a Field called 2D Bardcode to the final sorted list.
-    -Make sure that nothing else gets changed in the data list
-- Build out the UI 
-- Do couple different test
-- Check for bugs
+- Add a error check to make sure the fields are not empty
+- Add a error check to make sure that ether First or Company column exist
+- Add a Description for any errors it occurs
+- Add a stop function if the program encouter an error
+- Add a check to make sure myapp.conf is the folder if not create one.
 
 '''
 
@@ -289,18 +289,17 @@ def single_generation(csv_pd, order, mrdf, csv_input, file_location, file_name, 
     for index, row in csvFile.iterrows():
         if 'order_numb' in row:
             if 'first' in row:
-                last = row['last']
-                if row['last'] != None:
-                    last = str(row['last']).lower()
-                    first = row['first']
-                    if last == 'nan':
-                        row['first'] = f'{first}'
-                    else:
-                        row['first'] = f'{first} {last}'
+                last = str(row['last']).lower()
+                first = row['first']
+                if last == 'nan':
+                    row['first'] = f'{first}'
+                else:
+                    last = str(row['last'])
+                    row['first'] = f'{first} {last}'
                 if 'address2' in row:
                     if 'nan' in str(row['address2']):
                         row['address2'] = ''
-                if row['first'] == None and row['company'] != None:
+                if str(row['first']) == 'nan' and str(row['company']) != 'nan':
                     row['company'] = str(row['company'])[0:40]
                     row['address'] = str(row['address'])[0:40]
                     row['address2'] = str(row['address2'])[0:40]
@@ -311,10 +310,12 @@ def single_generation(csv_pd, order, mrdf, csv_input, file_location, file_name, 
                     row['address2'] = str(row['address2'])[0:40]
                     recordRow = row["first"], row['address'], row['address2'], row['city'], row['st'], row['order_numb']
             elif 'company' in row:
-                row['company'] = str(row['company'])[0:40]
-                row['address'] = str(row['address'])[0:40]
-                row['address2'] = str(row['address2'])[0:40]
-                recordRow = row["company"], row['address'], row['address2'], row['city'], row['st'], row['order_numb']
+                company = str(row['company'])
+                if company != 'nan':
+                    row['company'] = str(row['company'])[0:40]
+                    row['address'] = str(row['address'])[0:40]
+                    row['address2'] = str(row['address2'])[0:40]
+                    recordRow = row["company"], row['address'], row['address2'], row['city'], row['st'], row['order_numb']
 
         numb_pieces = 1
         finish_record = create_record_row(recordRow, order, record_number, numb_pieces)
@@ -347,13 +348,12 @@ def variable_generation(csv_pd, order, mrdf, csv_input, file_location, file_name
         if 'order_numb' in row:
             if 'first' in row:
                 if row['last'] != None:
-                    last = str(row['last']).lower()
                     first = row['first']
-                    last = row['last']
+                    last = str(row['last']).lower()
                     if last == 'nan':
                         row['first'] = f'{first}'
                     else:
-                        row['first'] = f'{first} {last}'
+                        row['first'] = f'{first} {first}'
                 if 'address2' in row:
                     if 'nan' in str(row['address2']):
                         row['address2'] = ''
@@ -545,7 +545,16 @@ def create_record_row(input_row, orderId, piece_number, number_of_pieces):
     return record
 
 
+def checkforconfig():
+    configPath = './myapp.conf'
+    check_file = os.path.isfile(configPath)
+    if check_file == False:
+        with open('myapp.conf', 'w') as file:
+            file.write("500x400+0+0")
+
+
 def main():
+    checkforconfig()
     logging.basicConfig(level=logging.DEBUG)
     root = tk.Tk()
     app = App(root)
