@@ -211,7 +211,7 @@ def main_generator():
     output = f'{path_location}/{csv_file_name}.csv'
 
     with open(output, encoding= 'utf-8', errors = 'replace') as f:
-        csv_input = pd.read_csv(f, dtype ='str')
+        csv_input = pd.read_csv(f, dtype =str, na_filter= False)
 
     if 'numb_piece' not in csv_input.columns and 'order_numb' in csv_input.columns:
         if 'first' in csv_input.columns:
