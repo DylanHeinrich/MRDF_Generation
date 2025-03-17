@@ -35,6 +35,7 @@ csv_path = None
 JobID = None
 PieceID = None
 PlannedMailPieceCount = None
+JobType = None
 
 t1 = None
 
@@ -198,75 +199,102 @@ def remove_non_utf8(input_file, output_file):
 
 
 def main_generator():
-    global csv_path, JobID, PieceID, PlannedMailPieceCount
+    global csv_path, JobID, PieceID, PlannedMailPieceCount, JobType
 
     path_location = os.path.dirname(csv_path)
 
 
     csv_file_name = str(os.path.basename(csv_path)).split('.', 1)[0]
+    
     orderId = csv_file_name.split('_',1)[0]
 
     MRDF = open(f'{path_location}/{orderId}.txt','a', errors = 'replace')
 
     output = f'{path_location}/{csv_file_name}.csv'
 
-    with open(output, encoding= 'utf-8', errors = 'replace') as f:
+    with open(output, encoding='utf-8', errors = 'ignore') as f:
         csv_input = pd.read_csv(f, dtype =str, na_filter= False)
 
-    if 'numb_piece' not in csv_input.columns and 'order_numb' in csv_input.columns:
-        if 'first' in csv_input.columns:
-            try:
-                csvFile = pd.read_csv(output, header=0, usecols= ["first", "last", "company","first2", "address", "address2", "city", "st","order_numb"], encoding='utf-8', encoding_errors='ignore')
-            except Exception as e:
-                logger.log(logging.ERROR, msg = f'{e}')
-                logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
-                t1.raise_exception()
-                t1.join()
-        elif 'company' in csv_input.columns:
-            try:
-                csvFile = pd.read_csv(csv_path, header=0, usecols= ["company", "address", "address2", "city", "st","order_numb"])
-            except:
-                logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
-                t1.raise_exception()
-                t1.join()
-    elif 'order_numb' in csv_input.columns:
-        if 'first' in csv_input.columns:
-            try:
-                csvFile = pd.read_csv(csv_path, header=0, usecols= ["first", "last", "company","first2", "address", "address2", "city", "st","order_numb", "numb_piece"])
-            except:
-                logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
-                t1.raise_exception()
-                t1.join()
-        elif 'company' in csv_input.columns:
-            try:
-                csvFile = pd.read_csv(csv_path, header=0, usecols= ["company", "address", "address2", "city", "st","order_numb", "numb_piece"])
-            except:
-                logger.log(logging.ERROR, msg='Could not find first or company field name. Did you choose the right file.')
-                t1.raise_exception()
-                t1.join()
+    csvFile = pd.read_csv(output, header=0, encoding='utf-8', encoding_errors='ignore')
+
+#    if 'num_pieces' not in csv_input.columns and 'order_numb' in csv_input.columns:
+#        if 'first' in csv_input.columns:
+#            try:
+#                csvFile = pd.read_csv(output, header=0, usecols= ["first", "last", "company","first2", "address", 
+#                                                                  "address2", "city", "st","order_numb"], encoding='utf-8', encoding_errors='ignore')
+#            except Exception as e:
+#                logger.log(logging.ERROR, msg = f'{e}')
+#                logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
+#                t1.raise_exception()
+#                t1.join()
+#        elif 'company' in csv_input.columns:
+#            try:
+#                csvFile = pd.read_csv(csv_path, header=0, usecols= ["company", "address", "address2", "city", "st","order_numb"], encoding='utf-8', encoding_errors='ignore')
+#            except:
+#                logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
+#                t1.raise_exception()
+#                t1.join()
+#    elif 'order_numb' in csv_input.columns:
+#        if 'first' in csv_input.columns:
+#            try:
+#                csvFile = pd.read_csv(csv_path, header=0, usecols= ["first", "last", "company","first2", 
+#                                                                    "address", "address2", "city", "st","order_numb", "numb_piece", "sequence"], encoding='utf-8', encoding_errors='ignore')
+#            except:
+#                logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
+#                t1.raise_exception()
+#                t1.join()
+#        elif 'company' in csv_input.columns:
+#            try:
+#                csvFile = pd.read_csv(csv_path, header=0, usecols= ["company", "address", "address2", "city", "st","order_numb", "numb_piece", "sequence"], encoding='utf-8', encoding_errors='ignore')
+#            except:
+#                logger.log(logging.ERROR, msg='Could not find first or company field name. Did you choose the right file.')
+#                t1.raise_exception()
+#                t1.join()
+#   else:
+#        if 'first' in csv_input.columns:
+#            if 'address2' in csv_input.columns:
+#                try:
+#                    csvFile = pd.read_csv(csv_path, header=0, usecols= ["first", "last", "address", "address2", "city", "st", "num_pieces", "sequence"], encoding='utf-8', encoding_errors='ignore')
+#                except:
+#                    logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
+#                    t1.raise_exception()
+#                    t1.join()
+#            else:
+#                try:
+#                    csvFile = pd.read_csv(csv_path, header=0, usecols= ["first", "last", "address", "city", "st","num_pieces", "sequence"], encoding='utf-8', encoding_errors='ignore')
+#                except:
+#                    logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
+#                    t1.raise_exception()
+#                    t1.join()
+#        elif 'company' in csv_input.columns:
+#            if 'address2' in csv_input.columns:
+#                try:
+#                    csvFile = pd.read_csv(csv_path, header=0, usecols= ["company", "last", "address", "address2", "city", "st","num_pieces", "sequence"], encoding='utf-8', encoding_errors='ignore')
+#                except:
+#                    logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
+#                    t1.raise_exception()
+#                    t1.join()
+#            else:
+#                try:
+#                    csvFile = pd.read_csv(csv_path, header=0, usecols= ["company", "last", "address", "city", "st","num_pieces", "sequence"], encoding='utf-8', encoding_errors='ignore')
+#                except:
+#                    logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
+#                    t1.raise_exception()
+#                    t1.join()
+
+    if 'num_pieces' not in csv_input.columns and 'order_numb' in csv_input.columns:
+        JobType = 'CSI'
+    elif 'num_pieces' in csv_input.columns:
+        JobType = 'Multi_Insert'
     else:
-        if 'first' in csv_input.columns:
-            try:
-                csvFile = pd.read_csv(csv_path, header=0, usecols= ["first", "last", "address", "address2", "city", "st"])
-            except:
-                logger.log(logging.ERROR, msg='Could not find the first or company field name. Did you choose the right file.')
-                t1.raise_exception()
-                t1.join()
-        elif 'company' in csv_input.columns:
-            try:
-                csvFile = pd.read_csv(csv_path, header=0, usecols= ["company", "address", "address2", "city", "st","order_numb"])
-            except:
-                logger.log(logging.ERROR, msg='Could not find first or company field name. Did you choose the right file.')
-                t1.raise_exception()
-                t1.join()
-    
+        JobType = 'Single_Insert'
 
     total_number_records = len(csvFile.index)
     
     headerrow = create_header_row(orderId, total_number_records)
     MRDF.write(headerrow + '\n')
 
-    if 'numb_piece' not in csv_input.columns:
+    if 'num_pieces' not in csv_input.columns:
         single_generation(csvFile, orderId, MRDF, csv_input, path_location, csv_file_name, total_number_records)
     else:
         variable_generation(csvFile, orderId, MRDF, csv_input, path_location, csv_file_name, total_number_records)
@@ -277,8 +305,8 @@ def main_generator():
     t1.raise_exception()
     t1.join()
 
-def single_generation(csv_pd, order, mrdf, csv_input, file_location, file_name, total):
-    csvFile = csv_pd
+def single_generation(csv_df, order, mrdf, csv_input, file_location, file_name, total):
+    csvFile = csv_df
     barcode_row = []
     barcodeHR_row = []
 
@@ -291,6 +319,18 @@ def single_generation(csv_pd, order, mrdf, csv_input, file_location, file_name, 
             if 'first' in row:
                 last = str(row['last']).lower()
                 first = row['first']
+
+                row['address'] = str(row['address'])[0:40]
+            
+                if 'first' in row:
+                    row['first'] = str(row['first'])[0:40]
+
+                if 'company' in row:
+                    row['company'] = str(row['company'])[0:40]
+
+                if 'address2' in row:
+                    row['address2'] = str(row['address2'])[0:40]
+
                 if last == 'nan':
                     row['first'] = f'{first}'
                 else:
@@ -300,21 +340,12 @@ def single_generation(csv_pd, order, mrdf, csv_input, file_location, file_name, 
                     if 'nan' in str(row['address2']):
                         row['address2'] = ''
                 if str(row['first']) == 'nan' and str(row['company']) != 'nan':
-                    row['company'] = str(row['company'])[0:40]
-                    row['address'] = str(row['address'])[0:40]
-                    row['address2'] = str(row['address2'])[0:40]
                     recordRow = row["company"], row['address'], row['address2'], row['city'], row['st'], row['order_numb']
                 else:
-                    row['first'] = str(row['first'])[0:40]
-                    row['address'] = str(row['address'])[0:40]
-                    row['address2'] = str(row['address2'])[0:40]
                     recordRow = row["first"], row['address'], row['address2'], row['city'], row['st'], row['order_numb']
             elif 'company' in row:
                 company = str(row['company'])
                 if company != 'nan':
-                    row['company'] = str(row['company'])[0:40]
-                    row['address'] = str(row['address'])[0:40]
-                    row['address2'] = str(row['address2'])[0:40]
                     recordRow = row["company"], row['address'], row['address2'], row['city'], row['st'], row['order_numb']
 
         numb_pieces = 1
@@ -333,65 +364,94 @@ def single_generation(csv_pd, order, mrdf, csv_input, file_location, file_name, 
 
     csv_input['2DBarcode'] = barcode_row
     csv_input['2DBarcodeHR'] = barcodeHR_row
-    csv_input.to_csv(f'{file_location}/{file_name}_2DBarcode.csv', index=False, quoting = csv.QUOTE_ALL)
+    csv_input.to_csv(f'{file_location}/{file_name}_2DBarcode.csv', index=False, quoting = csv.QUOTE_ALL, errors = 'replace')
 
-def variable_generation(csv_pd, order, mrdf, csv_input, file_location, file_name, total):
-    csvFile = csv_pd
+def variable_generation(csv_df:pd.DataFrame, order:str, mrdf, csv_input, file_location, file_name, total):
+    csvFile = csv_df
     barcode_row = []
     barcodeHR_row = []
-
+    int_records_number = 0
+    
     record_number = 1
 
     #print(csvFile.head())
     
     for index, row in csvFile.iterrows():
-        if 'order_numb' in row:
+        if 'first' in row:
+            last = str(row['last']).lower()
+            first = row['first']
+            row['address'] = str(row['address'])[0:40]
+            
             if 'first' in row:
-                if row['last'] != None:
-                    first = row['first']
-                    last = str(row['last']).lower()
-                    if last == 'nan':
-                        row['first'] = f'{first}'
-                    else:
-                        row['first'] = f'{first} {first}'
-                if 'address2' in row:
-                    if 'nan' in str(row['address2']):
-                        row['address2'] = ''
-                if row['first'] == None and row['company'] != None:
-                    row['company'] = str(row['company'])[0:40]
-                    recordRow = row["company"], row['address'], row['address2'], row['city'], row['st'], row['order_numb'], row['numb_piece']
-                else:
-                    row['first'] = str(row['first'])[0:40]
-                    recordRow = row["first"], row['address'], row['address2'], row['city'], row['st'], row['order_numb'], row['numb_piece']
-            elif 'company' in row:
+                row['first'] = str(row['first'])[0:40]
+
+            if 'company' in row:
                 row['company'] = str(row['company'])[0:40]
-                recordRow = row["company"], row['address'], row['address2'], row['city'], row['st'], row['order_numb'], row['numb_piece']
+
+            if 'address2' in row:
+                row['address2'] = str(row['address2'])[0:40]
+
+            if last == 'nan':
+                row['first'] = f'{first}'
+            else:
+                last = str(row['last'])
+                row['first'] = f'{first} {last}'
+
+            if 'address2' in row:
+                if 'nan' in str(row['address2']):
+                    row['address2'] = ''
+                if str(row['first']) == 'nan' and str(row['company']) != 'nan':
+                    recordRow = row["company"], row['address'], row['address2'], row['city'], row['st'], row['num_pieces'], row["sequence"]
+                else:
+                    recordRow = row["first"], row['address'], row['address2'], row['city'], row['st'], row['num_pieces'], row["sequence"]
+            else:
+                if str(row['first']) == 'nan' and str(row['company']) != 'nan':
+                    recordRow = row["company"], row['address'], row['city'], row['st'], row['num_pieces'], row["sequence"]
+                else:
+                    recordRow = row["first"], row['address'], row['city'], row['st'], row['num_pieces'], row["sequence"]
+        
+        elif 'company' in row:
+            company = str(row['company'])
+            if company != 'nan':
+                if 'address2' in row:
+                    recordRow = row["company"], row['address'], row['address2'], row['city'], row['st'], row['num_pieces'], row["sequence"]
+                else:
+                    recordRow = row["company"], row['address'], row['city'], row['st'], row['num_pieces'], row["sequence"]
 
 
-        finish_record = create_record_row(recordRow, order, record_number, row['numb_piece'])
+
+        finish_record = create_record_row(recordRow, order, record_number, row['num_pieces'])
 
         mrdf.write(finish_record + '\n')
-        
-        barcode = f'{JobID}{PieceID}0101'
-        barcodeHR = f'JobID {JobID}, PieceID {PieceID}, Page {record_number} of {total}'
-        barcode = f'{barcode}'.ljust(27, '0')
-        barcode_row.append(barcode)
-        barcodeHR_row.append(barcodeHR)
+        pageTotal = f'{row['num_pieces']}'.rjust(2,'0')
+        #pageTotal = '01'
+        pageNumber = 1
 
+        copyRecord = csv_input.loc[[int_records_number]].copy()
 
+    
+        while pageNumber < (int(pageTotal)+1): 
+            barcode = f'{JobID}{PieceID}{pageTotal}{str(pageNumber).rjust(2, '0')}'
+            barcodeHR = f'JobID {JobID}, PieceID {PieceID}, Page {str(pageNumber).rjust(2, '0')} of {pageTotal}, Set number {record_number} of {total}'
+            barcode = f'{barcode}'.ljust(27, '0')
+            barcode_row.append(barcode)
+            barcodeHR_row.append(barcodeHR)
+            if pageNumber < 4:
+                csv_input = pd.concat([csv_input.iloc[:int_records_number+1], copyRecord, csv_input.iloc[int_records_number+1:]]).reset_index(drop=True)
+
+            pageNumber += 1
+            
+            
+
+        int_records_number += 4
         record_number += 1
+        
 
     csv_input['2DBarcode'] = barcode_row
     csv_input['2DBarcodeHR'] = barcodeHR_row
-
-    csv_input_new = pd.DataFrame(columns = csv_input.columns)
-    for row in csv_input.values:
-        number_peices = row[0]
-        new_df = pd.DataFrame([row] * number_peices, columns = csv_input.columns)
-        csv_input_new = pd.concat([csv_input_new, new_df], join = 'inner')
+    csv_input.to_csv(f'{file_location}/{file_name}_2DBarcode_Set.csv', index=False, quoting = csv.QUOTE_ALL, errors = 'replace')
 
 
-    csv_input_new.to_csv(f'{file_location}/{file_name}_2DBarcode.csv', index=False)
 
 def start_generation():
     global t1
@@ -401,7 +461,7 @@ def start_generation():
     t1.start()
 
 def create_header_row(orderId, record_total):
-    global PlannedMailPieceCount
+    global PlannedMailPieceCount, JobType
 
     creatationDate = datetime.now().strftime('%m/%d/%Y %H:%M:%S')
     cycleID = datetime.now().strftime('%m_%d')
@@ -410,8 +470,8 @@ def create_header_row(orderId, record_total):
     RunID = str(JobID).ljust(15, ' ')
     CreationDate = f'{creatationDate}'.ljust(19, ' ')
     GroupID = ''.ljust(15)
-    JobType = 'CHECK1'.ljust(15, ' ')
-    ApplicationID = 'ShippingMgr'.ljust(15, ' ')
+    JobType = f'{JobType}'.ljust(15, ' ')
+    ApplicationID = 'MRDF_Gen_py'.ljust(15, ' ')
     CycleID = f'{cycleID}'.ljust(5, ' ')
     ClientID = ''.ljust(15, ' ')
     SLADueDate = ''.ljust(19, ' ')
